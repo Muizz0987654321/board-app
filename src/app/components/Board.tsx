@@ -2,39 +2,166 @@
 
 import {
   DndContext,
+  DragStartEvent,
+  DragOverEvent,
+  DragEndEvent,
+  DragOverlay,
   PointerSensor,
   useSensor,
   useSensors,
-  DragOverlay,
+  pointerWithin, // more stable for kanban
 } from "@dnd-kit/core";
-import {
-  restrictToFirstScrollableAncestor,
-  restrictToVerticalAxis,
-} from "@dnd-kit/modifiers";
-import { useEffect, useState } from "react";
 import Column from "./Column";
 import TaskCard from "./Taskcard";
 import { useTasks } from "@/app/store/useTasks";
-import type { Task, Status } from "@/types";
+import type { Status, Task, DragDataTask, DragDataColumn } from "@/types";
+import { useEffect, useRef, useState } from "react";
 
 const COLUMNS: Status[] = ["todo", "in_progress", "approved", "rejected"];
 
-export default function Board() {
-  const hasHydrated = useTasks((s) => s.hasHydrated);
-  const initFromMock = useTasks((s) => s.initFromMock);
-  const [active, setActive] = useState<Task | null>(null);
+/* ---------- helpers: Jira-like placement ---------- */
+function isBelowOverItem(e: DragOverEvent) {
+  const a = e.active.rect.current.translated ?? e.active.rect.current;
+  const o = e.over?.rect;
+  if (!a || !o) return false;
+  const activeCenterY = a.top + a.height / 2;
+  const overCenterY = o.top + o.height / 2;
+  return activeCenterY > overCenterY;
+}
 
-  // after hydration, if empty, seed from mock
+function topInsertIndex(e: DragOverEvent, listLength: number) {
+  const a = e.active.rect.current.translated ?? e.active.rect.current;
+  const o = e.over?.rect;
+  if (!a || !o) return listLength;
+  const topThreshold = o.top + o.height * 0.25; // top 25% zone
+  const activeCenterY = a.top + a.height / 2;
+  return activeCenterY < topThreshold ? 0 : listLength;
+}
+
+export default function Board() {
+  const initFromMock = useTasks((s) => s.initFromMock);
+  const hasHydrated = useTasks((s) => s.hasHydrated);
+  const reorder = useTasks((s) => s.reorder);
+  const moveDuringDrag = useTasks((s) => s.moveDuringDrag);
+  const tasksByStatus = useTasks((s) => s.tasksByStatus);
+
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
+
+  // cache the last applied target to prevent oscillation loops
+  const lastTargetRef = useRef<{
+    id: string;
+    to: Status;
+    index: number;
+  } | null>(null);
+
   useEffect(() => {
-    if (hasHydrated) initFromMock();
+    if (hasHydrated) void initFromMock();
   }, [hasHydrated, initFromMock]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
   );
 
+  function onDragStart(e: DragStartEvent) {
+    const data = e.active.data.current as
+      | DragDataTask
+      | DragDataColumn
+      | undefined;
+    setActiveTask(data && data.type === "task" ? data.task : null);
+    lastTargetRef.current = null; // reset
+  }
+
+  /** Compute the intended (toStatus, normalizedIndex) for the current drag-over */
+  function computeTarget(
+    e: DragOverEvent
+  ): { to: Status; index: number } | null {
+    const activeData = e.active.data.current as DragDataTask | undefined;
+    if (!activeData || activeData.type !== "task" || !e.over) return null;
+
+    const overData = e.over.data.current as
+      | DragDataTask
+      | DragDataColumn
+      | undefined;
+
+    // Hovering a column area
+    if (overData?.type === "column") {
+      const to = e.over.id as Status;
+      const index = topInsertIndex(
+        e,
+        useTasks.getState().tasksByStatus(to).length
+      );
+      return { to, index };
+    }
+
+    // Hovering a task
+    if (overData?.type === "task") {
+      const overTask = (overData as DragDataTask).task;
+      const to = (overData as DragDataTask).container ?? overTask.status;
+      let index = (e.over.data.current as any)?.sortable?.index ?? 0;
+      if (isBelowOverItem(e)) index += 1;
+
+      // compensate if dragging within same column
+      const dragged = activeData.task;
+      if (dragged.status === to) {
+        const rendered = useTasks.getState().tasksByStatus(to);
+        const fromIndex = rendered.findIndex((t) => t.id === dragged.id);
+        if (fromIndex !== -1 && fromIndex < index) index -= 1;
+      }
+      return { to, index: Math.max(0, index) };
+    }
+
+    return null;
+  }
+
+  // Live, Jira-like reordering while hovering — with extra client-side debounce
+  function onDragOver(e: DragOverEvent) {
+    const activeData = e.active.data.current as DragDataTask | undefined;
+    if (!activeData || activeData.type !== "task") return;
+
+    const target = computeTarget(e);
+    if (!target) return;
+
+    const key = { id: activeData.task.id, to: target.to, index: target.index };
+
+    // 🚦 Debounce: if target identical to last applied, skip updating the store
+    const last = lastTargetRef.current;
+    if (
+      last &&
+      last.id === key.id &&
+      last.to === key.to &&
+      last.index === key.index
+    )
+      return;
+
+    lastTargetRef.current = key;
+    moveDuringDrag(key.id, key.to, key.index);
+  }
+
+  // Finalize
+  function onDragEnd(e: DragEndEvent) {
+    const activeData = e.active.data.current as DragDataTask | undefined;
+    if (!activeData || activeData.type !== "task") {
+      setActiveTask(null);
+      lastTargetRef.current = null;
+      return;
+    }
+
+    // Prefer the last applied target to avoid recomputing at end-of-drag jitter
+    const last = lastTargetRef.current;
+    if (last && last.id === activeData.task.id) {
+      reorder(last.id, last.to, last.index);
+    } else {
+      const target = computeTarget(e as unknown as DragOverEvent);
+      if (target) reorder(activeData.task.id, target.to, target.index);
+    }
+
+    setActiveTask(null);
+    lastTargetRef.current = null;
+  }
+
+  // (optional) also clear onDragCancel if you wire it
+
   if (!hasHydrated) {
-    // optional skeleton to avoid hydration mismatch
     return (
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[...Array(4)].map((_, i) => (
@@ -50,23 +177,19 @@ export default function Board() {
   return (
     <DndContext
       sensors={sensors}
-      onDragStart={(e) => setActive(e?.active?.data?.current?.task ?? null)}
-      onDragEnd={(e) => {
-        const task = e.active?.data?.current?.task as Task | undefined;
-        const overStatus = e.over?.data?.current?.status as Status | undefined;
-        if (task && overStatus && task.status !== overStatus) {
-          useTasks.getState().moveTask(task.id, overStatus);
-        }
-        setActive(null);
-      }}
-      modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragEnd={onDragEnd}
+      collisionDetection={pointerWithin}
     >
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {COLUMNS.map((s) => (
-          <Column key={s} status={s} />
+        {COLUMNS.map((c) => (
+          <Column key={c} status={c} />
         ))}
       </div>
-      <DragOverlay>{active ? <TaskCard task={active} /> : null}</DragOverlay>
+      <DragOverlay>
+        {activeTask ? <TaskCard task={activeTask} /> : null}
+      </DragOverlay>
     </DndContext>
   );
 }

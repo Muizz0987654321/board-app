@@ -1,5 +1,5 @@
 // src/app/layout.tsx
-import "./globals.css";
+import "./globals.scss";
 import type { Metadata } from "next";
 import Sidebar from "@/app/components/Sidebar";
 import Topbar from "@/app/components/Topbar";
@@ -17,7 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-gray-100 text-gray-900">
-        <main className="mx-auto max-w-7xl p-4">
+        <main className="mx-auto">
           <Topbar />
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-[16rem_1fr]">
             <Sidebar />

@@ -1,19 +1,64 @@
 "use client";
-import SearchBar from "./Searchbar";
+
+import { Button } from "@/app/components/ui/Button";
+import Search from "@/app/components/ui/Search";
+import { useTasks } from "@/app/store/useTasks";
+import Image from "next/image";
 
 export default function Topbar() {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
+    <div className="flex items-center rounded-2xl border border-gray-200 bg-white px-3 py-2">
       <div className="flex items-center gap-2">
-        <div className="h-8 w-8 rounded-full bg-blue-600" />
-        <div className="text-sm font-semibold">Board App</div>
+        <Image
+          src="/images/logo.jpg"
+          alt="logo"
+          width={32}
+          height={32}
+          className="rounded-md"
+        />
+        <div className="text-sm font-semibold text-[#353945]">
+          Board <span className="text-[#3772FF]">App</span>
+        </div>
       </div>
-      <div className="flex flex-1 justify-center">
-        <SearchBar />
+
+      <div className="flex-1" />
+      <div className="flex items-center gap-8 shrink-0">
+        <Button className="inline-flex items-center gap-3">
+          <span>Create new board</span>
+          <Image src="/images/plustopbar.svg" alt="" width={20} height={20} />
+        </Button>
+
+        <div className="w-70">
+          <Search value={""} onChange={() => {}} />
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button className="grid size-9 place-items-center hover:bg-gray-50">
+            <Image
+              src="/images/filter.svg"
+              alt="notifications"
+              width={24}
+              height={24}
+            />
+          </button>
+          <button className="grid size-9 place-items-center hover:bg-gray-50">
+            <Image
+              src="/images/Bell.svg"
+              alt="settings"
+              width={24}
+              height={24}
+            />
+          </button>
+          <button className="grid size-9 place-items-center hover:bg-gray-50">
+            <Image
+              src="/images/profile.svg"
+              alt="account"
+              width={24}
+              height={24}
+            />
+          </button>
+        </div>
       </div>
-      <button className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
-        Create new board
-      </button>
     </div>
   );
 }

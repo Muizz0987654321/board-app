@@ -1,10 +1,10 @@
 [
-  { "id": "t1", "title": "User interview",            "status": "todo",        "meta": { "priority": "low" } },
-  { "id": "t2", "title": "UI Design",                  "status": "in_progress", "meta": { "priority": "high" } },
-  { "id": "t3", "title": "Prototype",                  "status": "approved",    "meta": { "priority": "med" } },
-  { "id": "t4", "title": "Group Management",           "status": "rejected" },
-  { "id": "t5", "title": "Design System",              "status": "todo" },
-  { "id": "t6", "title": "Check Clients Feedback",     "status": "in_progress" },
-  { "id": "t7", "title": "Detail Page",                "status": "approved" },
-  { "id": "t8", "title": "Slider controls",            "status": "rejected" }
+  { "id": "t1", "title": "User interview", "status": "todo", "meta": { "priority": "low" } },
+  { "id": "t2", "title": "UI Design", "status": "in_progress", "meta": { "priority": "high" } },
+  { "id": "t3", "title": "Prototype", "status": "approved", "meta": { "priority": "med" } },
+  { "id": "t4", "title": "Group Management", "status": "rejected" },
+  { "id": "t5", "title": "Design System", "status": "todo" },
+  { "id": "t6", "title": "Check Clients Feedback", "status": "in_progress" },
+  { "id": "t7", "title": "Detail Page", "status": "approved" },
+  { "id": "t8", "title": "Slider controls", "status": "rejected" }
 ]
