@@ -16,7 +16,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-gray-100 text-gray-900">
+      <body className="bg-white">
         <main className="mx-auto">
           <Topbar />
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-[16rem_1fr]">

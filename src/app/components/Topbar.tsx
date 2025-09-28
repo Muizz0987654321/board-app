@@ -7,7 +7,7 @@ import Image from "next/image";
 
 export default function Topbar() {
   return (
-    <div className="flex items-center rounded-2xl border border-gray-200 bg-white px-3 py-2">
+    <div className="flex items-center border-b border-b-[#E6E8EC] bg-white px-8 py-3">
       <div className="flex items-center gap-2">
         <Image
           src="/images/logo.jpg"
