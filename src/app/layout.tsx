@@ -1,8 +1,13 @@
+// src/app/layout.tsx
 import "./globals.css";
+import type { Metadata } from "next";
 import Sidebar from "@/app/components/Sidebar";
 import Topbar from "@/app/components/Topbar";
 
-export const metadata = { title: "Board App – Dashboard" };
+export const metadata: Metadata = {
+  title: "Board App – Dashboard",
+  description: "Swimlane dashboard (Next.js + Tailwind + dnd-kit + Zustand)",
+};
 
 export default function RootLayout({
   children,
